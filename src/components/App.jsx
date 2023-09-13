@@ -26,6 +26,7 @@ export const App = () => {
     setQuery(`${Date.now()}/${query}`);
     setImages([]);
     setPage(1);
+    setError(error);
     evt.target.reset();
   };
   const handleLoadMore = () => {
