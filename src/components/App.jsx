@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { SearchForm } from './SearchForm/SearchForm';
 import { fetchImages } from './api';
 import { Gallery } from './Gallery/Gallery';
@@ -8,94 +8,85 @@ import { LoadMoreButton } from './LoadMoreButton/LoadMoreButton';
 import { Loader } from './Loader/Loader';
 import toast, { Toaster } from 'react-hot-toast';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    loading: false,
-    loadMoreBtn: true,
-    error: false,
-  };
+export const App = () => {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [loadMoreBtn, setLoadMoreBtn] = useState(true);
+  const [error, setError] = useState(false);
 
-  handleSubmit = evt => {
+  const handleSubmit = evt => {
     evt.preventDefault();
     let query = evt.target.elements.query.value.trim();
     if (!query) {
       toast.error('Please fill the form!');
       return;
     }
-
-    this.setState({
-      query: `${Date.now()}/${query}`,
-      images: [],
-      page: 1,
-    });
+    setQuery(`${Date.now()}/${query}`);
+    setImages([]);
+    setPage(1);
     evt.target.reset();
   };
-
-  handleLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { query, page } = this.state;
-    const queryString = query.slice(query.indexOf('/') + 1);
+  const updateImages = (newImages, page, totalHits) => {
+    setImages(prevImages =>
+      page === 1 ? newImages : [...prevImages.images, ...newImages]
+    );
+    if (page === 1) {
+      toast.success(`We found ${totalHits} images=)`);
+    }
+  };
 
-    if (prevState.query !== query || prevState.page !== page) {
-      this.setState({ loading: true, loadMoreBtn: false });
+  const checkIfAllImagesFound = (totalHits, page) => {
+    if (page === Math.ceil(totalHits / 12)) {
+      setLoadMoreBtn(true);
+      toast.success(
+        'These are all our images for this category=) Try to search something else!'
+      );
+    }
+  };
 
+  useEffect(() => {
+    if (!query) {
+      return;
+    }
+    async function getQuery() {
+      const queryString = query.slice(query.indexOf('/') + 1);
       try {
         const searchedImages = await fetchImages(queryString, page);
         if (!searchedImages.totalHits) {
           toast.error('We could not find the images you requested =(');
           return;
         }
-        this.updateImages(searchedImages.hits, page, searchedImages.totalHits);
-        this.checkIfAllImagesFound(searchedImages.totalHits, page);
+        updateImages(searchedImages.hits, page, searchedImages.totalHits);
+        checkIfAllImagesFound(searchedImages.totalHits, page);
       } catch (error) {
         console.error(error);
-        this.setState({ loading: false, error: true });
+        setLoading(false);
+        setError(true);
         toast.error('Something went wrong, please reload website!');
       } finally {
-        this.setState({ loading: false, error: false });
+        setLoading(false);
+        setError(false);
       }
     }
-  }
+    getQuery();
+  }, [page, query]);
 
-  updateImages(newImages, page, totalHits) {
-    this.setState(prevState => ({
-      images: page === 1 ? newImages : [...prevState.images, ...newImages],
-    }));
-    if (page === 1) {
-      toast.success(`We found ${totalHits} images=)`);
-    }
-  }
-
-  checkIfAllImagesFound(totalHits, page) {
-    if (page === Math.ceil(totalHits / 12)) {
-      this.setState({ loadMoreBtn: true });
-      toast.success(
-        'These are all our images for this category=) Try to search something else!'
-      );
-    }
-  }
-
-  render() {
-    const { images, loading, loadMoreBtn } = this.state;
-    return (
-      <Layout>
-        <SearchForm onSubmit={this.handleSubmit} />
-        {images.length > 0 && <Gallery images={images}>Gallery</Gallery>}
-        {loading && <Loader />}
-        {images.length > 0 && !loadMoreBtn && (
-          <LoadMoreButton onClick={this.handleLoadMore} />
-        )}
-        <Toaster />
-        <GlobalStyle />
-      </Layout>
-    );
-  }
-}
+  return (
+    <Layout>
+      <SearchForm onSubmit={handleSubmit} />
+      {images.length > 0 && <Gallery images={images}>Gallery</Gallery>}
+      {loading && <Loader />}
+      {images.length > 0 && !loadMoreBtn && (
+        <LoadMoreButton onClick={handleLoadMore} />
+      )}
+      <Toaster />
+      <GlobalStyle />
+    </Layout>
+  );
+};
