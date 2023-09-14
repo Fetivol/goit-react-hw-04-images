@@ -35,7 +35,7 @@ export const App = () => {
 
   const updateImages = (newImages, page, totalHits) => {
     setImages(prevImages =>
-      page === 1 ? newImages : [...prevImages.images, ...newImages]
+      page === 1 ? newImages : [...prevImages, ...newImages]
     );
     if (page === 1) {
       toast.success(`We found ${totalHits} images=)`);
@@ -48,7 +48,9 @@ export const App = () => {
       toast.success(
         'These are all our images for this category=) Try to search something else!'
       );
+      return;
     }
+    setLoadMoreBtn(false);
   };
 
   useEffect(() => {
@@ -57,7 +59,9 @@ export const App = () => {
     }
     async function getQuery() {
       const queryString = query.slice(query.indexOf('/') + 1);
+
       try {
+        setLoading(true);
         const searchedImages = await fetchImages(queryString, page);
         if (!searchedImages.totalHits) {
           toast.error('We could not find the images you requested =(');
